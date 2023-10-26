@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY_URI: ghcr.io
+  REGISTRY_PATH: alatalo/sananmuunnos
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    # Set GITHUB_TOKEN permissions
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${{ env.REGISTRY_URI }}/${{ env.REGISTRY_PATH }}
+          flavor: |
+            latest=true  # always add :latest tag
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY_URI }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
